@@ -1,0 +1,25 @@
+.tags-list {
+    margin-top: 16px;
+  }
+  
+  .tags-list h3 {
+    margin-bottom: 8px;
+  }
+  
+  .tags-list ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .tags-list li {
+    background-color: #444;
+    padding: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .tags-list li:hover {
+    background-color: #555;
+  }
+  
