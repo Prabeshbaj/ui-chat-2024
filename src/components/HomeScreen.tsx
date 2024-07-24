@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './styles.css'; // Adjust the path as necessary
+import './HomeScreen.css'; // Adjust the path as necessary
+
 
 const MainChatComponent: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -37,6 +38,8 @@ const MainChatComponent: React.FC = () => {
         <img src="path/to/logo.png" alt="Logo" className="logo" />
         <img src="path/to/profile-picture.png" alt="Profile" className="profile-picture" />
       </div>
+
+      <h1>This is a main chat component</h1>
       {isHeaderVisible && (
         <div className="header">
           <h1>Hello, Prabesh</h1>
@@ -76,6 +79,7 @@ const MainChatComponent: React.FC = () => {
               </div>
             </div>
           ))}
+         
         </div>
       )}
       <div className="input-bar-container">
