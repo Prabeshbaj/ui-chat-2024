@@ -1,0 +1,195 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CardFooter,
+  FormControl,
+  FormLabel,
+  Input,
+  Stack,
+  Heading,
+  HStack,
+  useToast
+} from '@chakra-ui/react';
+
+const DevAssistCardEditor = ({ initialData, onSubmit }) => {
+  const [data, setData] = useState(initialData);
+  const [newCard, setNewCard] = useState({
+    id: '',
+    description: '',
+    source: '',
+    role: 'DevAssist',
+    style: 'default'
+  });
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const addCard = () => {
+    if (!newCard.id || !newCard.description || !newCard.source) {
+      toast({
+        title: 'Error',
+        description: 'Please fill all required fields',
+        status: 'error'
+      });
+      return;
+    }
+
+    const updatedData = {
+      ...data,
+      cardContent: {
+        ...data.cardContent,
+        profileTypes: [
+          {
+            ...data.cardContent.profileTypes[0],
+            cards: [...data.cardContent.profileTypes[0].cards, newCard]
+          }
+        ]
+      }
+    };
+
+    setData(updatedData);
+    setNewCard({
+      id: '',
+      description: '',
+      source: '',
+      role: 'DevAssist',
+      style: 'default'
+    });
+    
+    toast({
+      title: 'Success',
+      description: 'Card added successfully',
+      status: 'success'
+    });
+  };
+
+  const deleteCard = (id) => {
+    const updatedCards = data.cardContent.profileTypes[0].cards.filter(
+      card => card.id !== id
+    );
+
+    setData({
+      ...data,
+      cardContent: {
+        ...data.cardContent,
+        profileTypes: [
+          {
+            ...data.cardContent.profileTypes[0],
+            cards: updatedCards
+          }
+        ]
+      }
+    });
+
+    toast({
+      title: 'Success',
+      description: 'Card deleted successfully',
+      status: 'success'
+    });
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await onSubmit(data);
+      toast({
+        title: 'Success',
+        description: 'Changes saved successfully',
+        status: 'success'
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save changes',
+        status: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card maxW="2xl" w="full">
+      <CardHeader>
+        <Heading size="lg">Card Editor</Heading>
+      </CardHeader>
+      <CardBody>
+        <Stack spacing={6}>
+          {/* Add New Card Form */}
+          <Box p={4} borderWidth="1px" borderRadius="lg">
+            <Heading size="md" mb={4}>Add New Card</Heading>
+            <Stack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>ID</FormLabel>
+                <Input
+                  value={newCard.id}
+                  onChange={e => setNewCard({...newCard, id: e.target.value})}
+                  placeholder="dev007"
+                />
+              </FormControl>
+              
+              <FormControl isRequired>
+                <FormLabel>Description</FormLabel>
+                <Input
+                  value={newCard.description}
+                  onChange={e => setNewCard({...newCard, description: e.target.value})}
+                  placeholder="What roles do I have access to?"
+                />
+              </FormControl>
+              
+              <FormControl isRequired>
+                <FormLabel>Source</FormLabel>
+                <Input
+                  value={newCard.source}
+                  onChange={e => setNewCard({...newCard, source: e.target.value})}
+                  placeholder="SailPoint"
+                />
+              </FormControl>
+
+              <Button colorScheme="green" onClick={addCard}>
+                Add Card
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Existing Cards List */}
+          <Box p={4} borderWidth="1px" borderRadius="lg">
+            <Heading size="md" mb={4}>Existing Cards</Heading>
+            <Stack spacing={4}>
+              {data.cardContent.profileTypes[0].cards.map(card => (
+                <HStack key={card.id} p={2} borderWidth="1px" borderRadius="md">
+                  <Box flex="1">
+                    <Text fontWeight="bold">{card.id}</Text>
+                    <Text>{card.description}</Text>
+                  </Box>
+                  <Button
+                    colorScheme="red"
+                    size="sm"
+                    onClick={() => deleteCard(card.id)}
+                  >
+                    Delete
+                  </Button>
+                </HStack>
+              ))}
+            </Stack>
+          </Box>
+        </Stack>
+      </CardBody>
+      <CardFooter>
+        <Button
+          colorScheme="blue"
+          onClick={handleSubmit}
+          isLoading={loading}
+          w="full"
+        >
+          Save All Changes
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+export default DevAssistCardEditor;
