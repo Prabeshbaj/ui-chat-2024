@@ -12,32 +12,58 @@ import {
   Stack,
   Heading,
   HStack,
+  Text,
   useToast
 } from '@chakra-ui/react';
 
-const DevAssistCardEditor = ({ initialData, onSubmit }) => {
-  const [data, setData] = useState(initialData);
-  const [newCard, setNewCard] = useState({
+interface Card {
+  id: string;
+  description: string;
+  source: string;
+  role: string;
+  style: string;
+}
+
+interface ProfileType {
+  type: string;
+  cards: Card[];
+}
+
+interface CardContent {
+  cardContent: {
+    profileTypes: ProfileType[];
+  };
+}
+
+interface DevAssistCardEditorProps {
+  initialData: CardContent;
+  onSubmit: (data: CardContent) => Promise<void>;
+}
+
+const DevAssistCardEditor: React.FC<DevAssistCardEditorProps> = ({ initialData, onSubmit }) => {
+  const [data, setData] = useState<CardContent>(initialData);
+  const [newCard, setNewCard] = useState<Card>({
     id: '',
     description: '',
     source: '',
     role: 'DevAssist',
     style: 'default'
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const toast = useToast();
 
-  const addCard = () => {
+  const addCard = (): void => {
     if (!newCard.id || !newCard.description || !newCard.source) {
       toast({
         title: 'Error',
         description: 'Please fill all required fields',
-        status: 'error'
+        status: 'error',
+        duration: 3000,
       });
       return;
     }
 
-    const updatedData = {
+    const updatedData: CardContent = {
       ...data,
       cardContent: {
         ...data.cardContent,
@@ -62,11 +88,12 @@ const DevAssistCardEditor = ({ initialData, onSubmit }) => {
     toast({
       title: 'Success',
       description: 'Card added successfully',
-      status: 'success'
+      status: 'success',
+      duration: 3000,
     });
   };
 
-  const deleteCard = (id) => {
+  const deleteCard = (id: string): void => {
     const updatedCards = data.cardContent.profileTypes[0].cards.filter(
       card => card.id !== id
     );
@@ -87,24 +114,27 @@ const DevAssistCardEditor = ({ initialData, onSubmit }) => {
     toast({
       title: 'Success',
       description: 'Card deleted successfully',
-      status: 'success'
+      status: 'success',
+      duration: 3000,
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<void> => {
     setLoading(true);
     try {
       await onSubmit(data);
       toast({
         title: 'Success',
         description: 'Changes saved successfully',
-        status: 'success'
+        status: 'success',
+        duration: 3000,
       });
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to save changes',
-        status: 'error'
+        description: error instanceof Error ? error.message : 'Failed to save changes',
+        status: 'error',
+        duration: 3000,
       });
     } finally {
       setLoading(false);
@@ -118,7 +148,6 @@ const DevAssistCardEditor = ({ initialData, onSubmit }) => {
       </CardHeader>
       <CardBody>
         <Stack spacing={6}>
-          {/* Add New Card Form */}
           <Box p={4} borderWidth="1px" borderRadius="lg">
             <Heading size="md" mb={4}>Add New Card</Heading>
             <Stack spacing={4}>
@@ -155,7 +184,6 @@ const DevAssistCardEditor = ({ initialData, onSubmit }) => {
             </Stack>
           </Box>
 
-          {/* Existing Cards List */}
           <Box p={4} borderWidth="1px" borderRadius="lg">
             <Heading size="md" mb={4}>Existing Cards</Heading>
             <Stack spacing={4}>
