@@ -1,5 +1,39 @@
 ```typescript
-// ... (previous imports remain the same)
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Select,
+  FormControl,
+  FormLabel,
+  Input,
+  Stack,
+  Heading,
+  HStack,
+  Text,
+  useToast,
+  Spinner,
+  Center,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Checkbox,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuOptionGroup,
+  MenuItemOption,
+  MenuDivider
+} from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
+
+// ... (previous interfaces remain same)
 
 interface ProfileCard {
   id: string;
@@ -7,42 +41,46 @@ interface ProfileCard {
   source: string;
   role: string;
   style: string;
-  division?: string[]; // Optional division array
+  division?: string[];
 }
 
-// ... (other interfaces remain the same)
+const AVAILABLE_DIVISIONS = [
+  'Global Technology',
+  'Investment Engine',
+  'Enterprise Architecture',
+  'Cloud Engineering',
+  'Product Engineering',
+  'Data Engineering',
+  'Security Engineering'
+];
 
 const CardContentEditor: React.FC = () => {
-  // ... (previous state declarations remain the same)
-  
+  // ... (previous state declarations remain same)
+
   const [newProfileCard, setNewProfileCard] = useState<ProfileCard>({
     id: '',
     description: '',
     source: '',
     role: 'DevAssist',
     style: 'default',
-    division: [] // Initialize empty array
+    division: []
   });
 
-  const [newDivision, setNewDivision] = useState<string>('');
-
-  // ... (previous functions remain the same until renderCardForm)
-
-  const handleAddDivision = () => {
-    if (!newDivision.trim()) return;
-    
-    setNewProfileCard(prev => ({
-      ...prev,
-      division: [...(prev.division || []), newDivision.trim()]
-    }));
-    setNewDivision('');
-  };
-
-  const handleRemoveDivision = (indexToRemove: number) => {
-    setNewProfileCard(prev => ({
-      ...prev,
-      division: prev.division?.filter((_, index) => index !== indexToRemove)
-    }));
+  const handleDivisionToggle = (division: string) => {
+    setNewProfileCard(prev => {
+      const currentDivisions = prev.division || [];
+      if (currentDivisions.includes(division)) {
+        return {
+          ...prev,
+          division: currentDivisions.filter(d => d !== division)
+        };
+      } else {
+        return {
+          ...prev,
+          division: [...currentDivisions, division]
+        };
+      }
+    });
   };
 
   const renderCardForm = () => {
@@ -78,36 +116,56 @@ const CardContentEditor: React.FC = () => {
 
           <FormControl>
             <FormLabel>Divisions</FormLabel>
-            <HStack>
-              <Input
-                value={newDivision}
-                onChange={e => setNewDivision(e.target.value)}
-                placeholder="Add division"
-              />
-              <Button onClick={handleAddDivision}>Add</Button>
-            </HStack>
-            {newProfileCard.division && newProfileCard.division.length > 0 && (
-              <Stack mt={2} spacing={2}>
-                {newProfileCard.division.map((div, index) => (
-                  <HStack key={index}>
-                    <Text flex="1">{div}</Text>
-                    <Button
-                      size="sm"
-                      colorScheme="red"
-                      onClick={() => handleRemoveDivision(index)}
+            <Menu closeOnSelect={false}>
+              <MenuButton 
+                as={Button} 
+                rightIcon={<ChevronDownIcon />}
+                w="full"
+                textAlign="left"
+              >
+                {newProfileCard.division?.length 
+                  ? `${newProfileCard.division.length} selected`
+                  : 'Select divisions'}
+              </MenuButton>
+              <MenuList>
+                <MenuOptionGroup type="checkbox" value={newProfileCard.division}>
+                  {AVAILABLE_DIVISIONS.map(division => (
+                    <MenuItemOption
+                      key={division}
+                      value={division}
+                      onClick={() => handleDivisionToggle(division)}
                     >
-                      Remove
-                    </Button>
-                  </HStack>
-                ))}
-              </Stack>
+                      {division}
+                    </MenuItemOption>
+                  ))}
+                </MenuOptionGroup>
+              </MenuList>
+            </Menu>
+            {newProfileCard.division && newProfileCard.division.length > 0 && (
+              <Box mt={2} p={2} borderWidth="1px" borderRadius="md">
+                <Text fontWeight="bold" mb={2}>Selected Divisions:</Text>
+                <Stack>
+                  {newProfileCard.division.map((div, index) => (
+                    <HStack key={index} justify="space-between">
+                      <Text>{div}</Text>
+                      <Button
+                        size="xs"
+                        colorScheme="red"
+                        onClick={() => handleDivisionToggle(div)}
+                      >
+                        Remove
+                      </Button>
+                    </HStack>
+                  ))}
+                </Stack>
+              </Box>
             )}
           </FormControl>
         </Stack>
       );
     }
 
-    // ... (rest of the renderCardForm function remains the same)
+    // ... (rest of renderCardForm remains same)
   };
 
   const renderCards = () => {
@@ -145,11 +203,11 @@ const CardContentEditor: React.FC = () => {
           </HStack>
         ));
 
-      // ... (rest of the renderCards function remains the same)
+      // ... (rest of renderCards remains same)
     }
   };
 
-  // ... (rest of the component remains the same)
+  // ... (rest of component remains same)
 };
 
 export default CardContentEditor;
