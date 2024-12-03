@@ -24,10 +24,22 @@ import {
   TabPanel
 } from '@chakra-ui/react';
 
-// Define types based on the JSON structure
+interface ProfileCard {
+  id: string;
+  description: string;
+  source: string;
+  role: string;
+  style: string;
+}
+
 interface CardItem {
   header: string;
   description: string;
+}
+
+interface ProfileType {
+  type: string;
+  cards: ProfileCard[];
 }
 
 interface HomeCardSection {
@@ -45,25 +57,28 @@ interface GuidelineSection {
 
 interface CardContent {
   cardContent: {
-    profileTypes: any[]; // Keeping this as shown in the JSON
+    profileTypes: ProfileType[];
     homeCards: HomeCardSection[];
     guidelines: GuidelineSection[];
   };
 }
 
-interface SectionType {
-  type: 'homeCards' | 'guidelines';
-  name: string;
-}
+type SectionType = 'profileTypes' | 'homeCards' | 'guidelines';
 
 const CardContentEditor: React.FC = () => {
   const [data, setData] = useState<CardContent | null>(null);
-  const [activeSection, setActiveSection] = useState<SectionType>({
-    type: 'homeCards',
-    name: 'DevAssist'
-  });
+  const [activeTab, setActiveTab] = useState<SectionType>('profileTypes');
+  const [selectedType, setSelectedType] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const toast = useToast();
+
+  const [newProfileCard, setNewProfileCard] = useState<ProfileCard>({
+    id: '',
+    description: '',
+    source: '',
+    role: 'DevAssist',
+    style: 'default'
+  });
 
   const [newCard, setNewCard] = useState<CardItem>({
     header: '',
@@ -73,6 +88,22 @@ const CardContentEditor: React.FC = () => {
   useEffect(() => {
     fetchCardContent();
   }, []);
+
+  useEffect(() => {
+    if (data) {
+      switch (activeTab) {
+        case 'profileTypes':
+          setSelectedType(data.cardContent.profileTypes[0]?.type || '');
+          break;
+        case 'homeCards':
+          setSelectedType(data.cardContent.homeCards[0]?.type || '');
+          break;
+        case 'guidelines':
+          setSelectedType(data.cardContent.guidelines[0]?.type || '');
+          break;
+      }
+    }
+  }, [activeTab, data]);
 
   const fetchCardContent = async () => {
     try {
@@ -87,20 +118,6 @@ const CardContentEditor: React.FC = () => {
         duration: 3000,
       });
       setLoading(false);
-    }
-  };
-
-  const getCurrentCards = () => {
-    if (!data) return [];
-    
-    if (activeSection.type === 'homeCards') {
-      return data.cardContent.homeCards.find(
-        section => section.type === activeSection.name
-      )?.cards || [];
-    } else {
-      return data.cardContent.guidelines.find(
-        section => section.type === activeSection.name
-      )?.cards || [];
     }
   };
 
@@ -132,69 +149,189 @@ const CardContentEditor: React.FC = () => {
   };
 
   const handleAddCard = async () => {
-    if (!data || !newCard.description) {
-      toast({
-        title: 'Please fill in the description',
-        status: 'warning',
-        duration: 2000,
-      });
-      return;
-    }
+    if (!data || !selectedType) return;
 
     const updatedData = { ...data };
     
-    if (activeSection.type === 'homeCards') {
-      const sectionIndex = updatedData.cardContent.homeCards.findIndex(
-        section => section.type === activeSection.name
-      );
-      
-      if (sectionIndex !== -1) {
-        updatedData.cardContent.homeCards[sectionIndex].cards.push(newCard);
-      }
-    } else {
-      const sectionIndex = updatedData.cardContent.guidelines.findIndex(
-        section => section.type === activeSection.name
-      );
-      
-      if (sectionIndex !== -1) {
-        updatedData.cardContent.guidelines[sectionIndex].cards.push(newCard);
-      }
-    }
+    switch (activeTab) {
+      case 'profileTypes':
+        if (newProfileCard.id && newProfileCard.description && newProfileCard.source) {
+          const typeIndex = updatedData.cardContent.profileTypes.findIndex(
+            type => type.type === selectedType
+          );
+          if (typeIndex !== -1) {
+            updatedData.cardContent.profileTypes[typeIndex].cards.push(newProfileCard);
+            await updateCardContent(updatedData);
+            setNewProfileCard({
+              id: '',
+              description: '',
+              source: '',
+              role: 'DevAssist',
+              style: 'default'
+            });
+          }
+        }
+        break;
 
-    await updateCardContent(updatedData);
-    setNewCard({ header: '', description: '' });
+      case 'homeCards':
+      case 'guidelines':
+        if (newCard.description) {
+          const section = activeTab === 'homeCards' ? 'homeCards' : 'guidelines';
+          const sectionIndex = updatedData.cardContent[section].findIndex(
+            s => s.type === selectedType
+          );
+          if (sectionIndex !== -1) {
+            updatedData.cardContent[section][sectionIndex].cards.push(newCard);
+            await updateCardContent(updatedData);
+            setNewCard({ header: '', description: '' });
+          }
+        }
+        break;
+    }
   };
 
-  const handleDeleteCard = async (cardToDelete: CardItem) => {
-    if (!data) return;
+  const handleDeleteCard = async (card: ProfileCard | CardItem) => {
+    if (!data || !selectedType) return;
 
     const updatedData = { ...data };
     
-    if (activeSection.type === 'homeCards') {
-      const sectionIndex = updatedData.cardContent.homeCards.findIndex(
-        section => section.type === activeSection.name
-      );
-      
-      if (sectionIndex !== -1) {
-        updatedData.cardContent.homeCards[sectionIndex].cards = 
-          updatedData.cardContent.homeCards[sectionIndex].cards.filter(
-            card => card.description !== cardToDelete.description
-          );
-      }
-    } else {
-      const sectionIndex = updatedData.cardContent.guidelines.findIndex(
-        section => section.type === activeSection.name
-      );
-      
-      if (sectionIndex !== -1) {
-        updatedData.cardContent.guidelines[sectionIndex].cards = 
-          updatedData.cardContent.guidelines[sectionIndex].cards.filter(
-            card => card.description !== cardToDelete.description
-          );
-      }
+    switch (activeTab) {
+      case 'profileTypes':
+        const profileCard = card as ProfileCard;
+        const typeIndex = updatedData.cardContent.profileTypes.findIndex(
+          type => type.type === selectedType
+        );
+        if (typeIndex !== -1) {
+          updatedData.cardContent.profileTypes[typeIndex].cards = 
+            updatedData.cardContent.profileTypes[typeIndex].cards.filter(
+              c => c.id !== profileCard.id
+            );
+        }
+        break;
+
+      case 'homeCards':
+      case 'guidelines':
+        const basicCard = card as CardItem;
+        const section = activeTab === 'homeCards' ? 'homeCards' : 'guidelines';
+        const sectionIndex = updatedData.cardContent[section].findIndex(
+          s => s.type === selectedType
+        );
+        if (sectionIndex !== -1) {
+          updatedData.cardContent[section][sectionIndex].cards = 
+            updatedData.cardContent[section][sectionIndex].cards.filter(
+              c => c.description !== basicCard.description
+            );
+        }
+        break;
     }
 
     await updateCardContent(updatedData);
+  };
+
+  const renderCardForm = () => {
+    if (activeTab === 'profileTypes') {
+      return (
+        <Stack spacing={4}>
+          <FormControl isRequired>
+            <FormLabel>ID</FormLabel>
+            <Input
+              value={newProfileCard.id}
+              onChange={e => setNewProfileCard({...newProfileCard, id: e.target.value})}
+              placeholder="dev007"
+            />
+          </FormControl>
+          
+          <FormControl isRequired>
+            <FormLabel>Description</FormLabel>
+            <Input
+              value={newProfileCard.description}
+              onChange={e => setNewProfileCard({...newProfileCard, description: e.target.value})}
+              placeholder="Enter description"
+            />
+          </FormControl>
+          
+          <FormControl isRequired>
+            <FormLabel>Source</FormLabel>
+            <Input
+              value={newProfileCard.source}
+              onChange={e => setNewProfileCard({...newProfileCard, source: e.target.value})}
+              placeholder="Enter source"
+            />
+          </FormControl>
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack spacing={4}>
+        <FormControl>
+          <FormLabel>Header</FormLabel>
+          <Input
+            value={newCard.header}
+            onChange={e => setNewCard({...newCard, header: e.target.value})}
+            placeholder="Enter header (optional)"
+          />
+        </FormControl>
+        
+        <FormControl isRequired>
+          <FormLabel>Description</FormLabel>
+          <Input
+            value={newCard.description}
+            onChange={e => setNewCard({...newCard, description: e.target.value})}
+            placeholder="Enter description"
+          />
+        </FormControl>
+      </Stack>
+    );
+  };
+
+  const renderCards = () => {
+    if (!data || !selectedType) return null;
+
+    switch (activeTab) {
+      case 'profileTypes':
+        const profileType = data.cardContent.profileTypes.find(
+          type => type.type === selectedType
+        );
+        return profileType?.cards.map((card, index) => (
+          <HStack key={index} p={4} borderWidth="1px" borderRadius="md">
+            <Box flex="1">
+              <Text fontWeight="bold">ID: {card.id}</Text>
+              <Text>Description: {card.description}</Text>
+              <Text>Source: {card.source}</Text>
+            </Box>
+            <Button
+              colorScheme="red"
+              size="sm"
+              onClick={() => handleDeleteCard(card)}
+            >
+              Delete
+            </Button>
+          </HStack>
+        ));
+
+      case 'homeCards':
+      case 'guidelines':
+        const section = activeTab === 'homeCards' ? 'homeCards' : 'guidelines';
+        const currentSection = data.cardContent[section].find(
+          s => s.type === selectedType
+        );
+        return currentSection?.cards.map((card, index) => (
+          <HStack key={index} p={4} borderWidth="1px" borderRadius="md">
+            <Box flex="1">
+              {card.header && <Text fontWeight="bold">{card.header}</Text>}
+              <Text>{card.description}</Text>
+            </Box>
+            <Button
+              colorScheme="red"
+              size="sm"
+              onClick={() => handleDeleteCard(card)}
+            >
+              Delete
+            </Button>
+          </HStack>
+        ));
+    }
   };
 
   if (loading) return <Center h="200px"><Spinner size="xl" /></Center>;
@@ -205,23 +342,30 @@ const CardContentEditor: React.FC = () => {
       <CardHeader>
         <Heading size="lg" mb={4}>Card Content Editor</Heading>
         <Tabs onChange={(index) => {
-          setActiveSection({
-            type: index === 0 ? 'homeCards' : 'guidelines',
-            name: index === 0 ? 'DevAssist' : 'DevAssist'
-          });
+          setActiveTab(['profileTypes', 'homeCards', 'guidelines'][index] as SectionType);
         }}>
           <TabList>
+            <Tab>Cards</Tab>
             <Tab>Home Cards</Tab>
             <Tab>Guidelines</Tab>
           </TabList>
           <TabPanels>
             <TabPanel>
               <Select
-                value={activeSection.name}
-                onChange={(e) => setActiveSection({
-                  type: 'homeCards',
-                  name: e.target.value
-                })}
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+              >
+                {data.cardContent.profileTypes.map(type => (
+                  <option key={type.type} value={type.type}>
+                    {type.type}
+                  </option>
+                ))}
+              </Select>
+            </TabPanel>
+            <TabPanel>
+              <Select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
               >
                 {data.cardContent.homeCards.map(section => (
                   <option key={section.type} value={section.type}>
@@ -232,11 +376,8 @@ const CardContentEditor: React.FC = () => {
             </TabPanel>
             <TabPanel>
               <Select
-                value={activeSection.name}
-                onChange={(e) => setActiveSection({
-                  type: 'guidelines',
-                  name: e.target.value
-                })}
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
               >
                 {data.cardContent.guidelines.map(section => (
                   <option key={section.type} value={section.type}>
@@ -253,51 +394,16 @@ const CardContentEditor: React.FC = () => {
         <Stack spacing={6}>
           <Box p={4} borderWidth="1px" borderRadius="lg">
             <Heading size="md" mb={4}>Add New Card</Heading>
-            <Stack spacing={4}>
-              <FormControl>
-                <FormLabel>Header</FormLabel>
-                <Input
-                  value={newCard.header}
-                  onChange={e => setNewCard({...newCard, header: e.target.value})}
-                  placeholder="Enter header (optional)"
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Description</FormLabel>
-                <Input
-                  value={newCard.description}
-                  onChange={e => setNewCard({...newCard, description: e.target.value})}
-                  placeholder="Enter description"
-                />
-              </FormControl>
-
-              <Button colorScheme="green" onClick={handleAddCard}>
-                Add Card
-              </Button>
-            </Stack>
+            {renderCardForm()}
+            <Button colorScheme="green" mt={4} onClick={handleAddCard}>
+              Add Card
+            </Button>
           </Box>
 
           <Box p={4} borderWidth="1px" borderRadius="lg">
             <Heading size="md" mb={4}>Current Cards</Heading>
             <Stack spacing={4}>
-              {getCurrentCards().map((card, index) => (
-                <HStack key={index} p={4} borderWidth="1px" borderRadius="md">
-                  <Box flex="1">
-                    {card.header && (
-                      <Text fontWeight="bold" mb={2}>{card.header}</Text>
-                    )}
-                    <Text>{card.description}</Text>
-                  </Box>
-                  <Button
-                    colorScheme="red"
-                    size="sm"
-                    onClick={() => handleDeleteCard(card)}
-                  >
-                    Delete
-                  </Button>
-                </HStack>
-              ))}
+              {renderCards()}
             </Stack>
           </Box>
         </Stack>
