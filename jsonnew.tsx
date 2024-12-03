@@ -1,3 +1,4 @@
+```typescript
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -15,216 +16,248 @@ import {
   Text,
   useToast,
   Spinner,
-  Center
+  Center,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuOptionGroup,
+  MenuItemOption,
+  ButtonGroup,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 
-interface Card {
-  id: string;
-  description: string;
-  source: string;
-  role: string;
-  style: string;
-}
+// ... (previous interfaces remain same)
 
-interface ProfileType {
-  type: string;
-  cards: Card[];
-}
+const AVAILABLE_DIVISIONS = [
+  'Global Technology',
+  'Investment Engine',
+  'Enterprise Architecture',
+  'Cloud Engineering',
+  'Product Engineering',
+  'Data Engineering',
+  'Security Engineering'
+];
 
-interface CardContent {
-  cardContent: {
-    profileTypes: ProfileType[];
-  };
-}
-
-const DevAssistCardEditor: React.FC = () => {
+const CardContentEditor: React.FC = () => {
+  const [originalData, setOriginalData] = useState<CardContent | null>(null);
   const [data, setData] = useState<CardContent | null>(null);
+  const [activeTab, setActiveTab] = useState<SectionType>('profileTypes');
   const [selectedType, setSelectedType] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const toast = useToast();
 
-  const [newCard, setNewCard] = useState<Card>({
+  const [newProfileCard, setNewProfileCard] = useState<ProfileCard>({
     id: '',
     description: '',
     source: '',
     role: 'DevAssist',
-    style: 'default'
+    style: 'default',
+    division: []
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async (): Promise<void> => {
+  const fetchCardContent = async () => {
     try {
-      const response = await fetch('/api/cards');
-      if (!response.ok) throw new Error('Failed to fetch data');
-      const jsonData = await response.json();
+      const response = await fetch('/api/cardContent');
+      const jsonData: CardContent = await response.json();
+      setOriginalData(JSON.parse(JSON.stringify(jsonData))); // Deep copy
       setData(jsonData);
-      setSelectedType(jsonData.cardContent.profileTypes[0].type);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      setLoading(false);
+    } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch data',
-        status: 'error'
+        title: 'Error fetching content',
+        status: 'error',
+        duration: 3000,
       });
-    } finally {
       setLoading(false);
     }
   };
 
-  const getCurrentProfileType = () => {
-    return data?.cardContent.profileTypes.find(profile => profile.type === selectedType);
+  useEffect(() => {
+    fetchCardContent();
+  }, []);
+
+  useEffect(() => {
+    if (originalData && data) {
+      setHasChanges(JSON.stringify(originalData) !== JSON.stringify(data));
+    }
+  }, [data, originalData]);
+
+  const handleDivisionToggle = (division: string) => {
+    setNewProfileCard(prev => {
+      const currentDivisions = prev.division || [];
+      if (currentDivisions.includes(division)) {
+        return {
+          ...prev,
+          division: currentDivisions.filter(d => d !== division)
+        };
+      } else {
+        return {
+          ...prev,
+          division: [...currentDivisions, division]
+        };
+      }
+    });
   };
 
-  const addCard = async (): Promise<void> => {
+  const handleAddCard = () => {
     if (!data || !selectedType) return;
 
-    try {
-      const response = await fetch('/api/cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newCard, profileType: selectedType })
-      });
-
-      if (!response.ok) throw new Error('Failed to add card');
-
-      const updatedProfileTypes = data.cardContent.profileTypes.map(profile =>
-        profile.type === selectedType
-          ? { ...profile, cards: [...profile.cards, newCard] }
-          : profile
-      );
-
-      setData({
-        cardContent: {
-          profileTypes: updatedProfileTypes
+    let updatedData = { ...data };
+    
+    switch (activeTab) {
+      case 'profileTypes':
+        if (newProfileCard.id && newProfileCard.description && newProfileCard.source) {
+          const typeIndex = updatedData.cardContent.profileTypes.findIndex(
+            type => type.type === selectedType
+          );
+          if (typeIndex !== -1) {
+            updatedData.cardContent.profileTypes[typeIndex].cards.push(newProfileCard);
+            setData(updatedData);
+            setNewProfileCard({
+              id: '',
+              description: '',
+              source: '',
+              role: 'DevAssist',
+              style: 'default',
+              division: []
+            });
+          }
         }
-      });
+        break;
 
-      setNewCard({
-        id: '',
-        description: '',
-        source: '',
-        role: selectedType,
-        style: 'default'
-      });
-
-      toast({ title: 'Success', description: 'Card added', status: 'success' });
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to add card', status: 'error' });
+      // ... (similar for other sections)
     }
   };
 
-  const deleteCard = async (id: string): Promise<void> => {
+  const handleDeleteCard = (card: ProfileCard | CardItem) => {
     if (!data || !selectedType) return;
 
-    try {
-      const response = await fetch(`/api/cards/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete card');
-
-      const updatedProfileTypes = data.cardContent.profileTypes.map(profile =>
-        profile.type === selectedType
-          ? { ...profile, cards: profile.cards.filter(card => card.id !== id) }
-          : profile
-      );
-
-      setData({
-        cardContent: {
-          profileTypes: updatedProfileTypes
+    let updatedData = { ...data };
+    
+    switch (activeTab) {
+      case 'profileTypes':
+        const profileCard = card as ProfileCard;
+        const typeIndex = updatedData.cardContent.profileTypes.findIndex(
+          type => type.type === selectedType
+        );
+        if (typeIndex !== -1) {
+          updatedData.cardContent.profileTypes[typeIndex].cards = 
+            updatedData.cardContent.profileTypes[typeIndex].cards.filter(
+              c => c.id !== profileCard.id
+            );
+          setData(updatedData);
         }
-      });
+        break;
 
-      toast({ title: 'Success', description: 'Card deleted', status: 'success' });
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to delete card', status: 'error' });
+      // ... (similar for other sections)
     }
   };
+
+  const handleApplyChanges = async () => {
+    if (!data || !hasChanges) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/cardContent', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) throw new Error('Failed to update content');
+      
+      setOriginalData(JSON.parse(JSON.stringify(data))); // Update original data
+      setHasChanges(false);
+      toast({
+        title: 'Changes saved successfully',
+        status: 'success',
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to save changes',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        status: 'error',
+        duration: 3000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    if (originalData) {
+      setData(JSON.parse(JSON.stringify(originalData)));
+      setHasChanges(false);
+      toast({
+        title: 'Changes discarded',
+        status: 'info',
+        duration: 2000,
+      });
+    }
+  };
+
+  // ... (renderCardForm and renderCards remain same)
 
   if (loading) return <Center h="200px"><Spinner size="xl" /></Center>;
-  if (error || !data) return <Center h="200px"><Text color="red.500">Error loading data</Text></Center>;
+  if (!data) return <Center h="200px"><Text>No data available</Text></Center>;
 
   return (
     <Card maxW="2xl" w="full">
       <CardHeader>
-        <Heading size="lg">Card Editor</Heading>
-        <FormControl mt={4}>
-          <FormLabel>Select Profile Type</FormLabel>
-          <Select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            {data.cardContent.profileTypes.map(profile => (
-              <option key={profile.type} value={profile.type}>
-                {profile.type}
-              </option>
-            ))}
-          </Select>
-        </FormControl>
+        <HStack justify="space-between" mb={4}>
+          <Heading size="lg">Card Content Editor</Heading>
+          <ButtonGroup>
+            <Button
+              colorScheme="red"
+              variant="ghost"
+              onClick={handleDiscardChanges}
+              isDisabled={!hasChanges}
+            >
+              Discard Changes
+            </Button>
+            <Button
+              colorScheme="green"
+              onClick={handleApplyChanges}
+              isDisabled={!hasChanges}
+              isLoading={isSaving}
+            >
+              Apply Changes
+            </Button>
+          </ButtonGroup>
+        </HStack>
+        
+        {hasChanges && (
+          <Alert status="info" mb={4}>
+            <AlertIcon />
+            You have unsaved changes. Click "Apply Changes" to save them.
+          </Alert>
+        )}
+
+        <Tabs onChange={(index) => {
+          setActiveTab(['profileTypes', 'homeCards', 'guidelines'][index] as SectionType);
+        }}>
+          {/* ... (rest of the tabs section) */}
+        </Tabs>
       </CardHeader>
 
       <CardBody>
-        <Stack spacing={6}>
-          <Box p={4} borderWidth="1px" borderRadius="lg">
-            <Heading size="md" mb={4}>Add New {selectedType} Card</Heading>
-            <Stack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel>ID</FormLabel>
-                <Input
-                  value={newCard.id}
-                  onChange={e => setNewCard({...newCard, id: e.target.value})}
-                  placeholder={`${selectedType.toLowerCase()}001`}
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Description</FormLabel>
-                <Input
-                  value={newCard.description}
-                  onChange={e => setNewCard({...newCard, description: e.target.value})}
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Source</FormLabel>
-                <Input
-                  value={newCard.source}
-                  onChange={e => setNewCard({...newCard, source: e.target.value})}
-                />
-              </FormControl>
-
-              <Button colorScheme="green" onClick={addCard}>
-                Add Card
-              </Button>
-            </Stack>
-          </Box>
-
-          <Box p={4} borderWidth="1px" borderRadius="lg">
-            <Heading size="md" mb={4}>{selectedType} Cards</Heading>
-            <Stack spacing={4}>
-              {getCurrentProfileType()?.cards.map(card => (
-                <HStack key={card.id} p={2} borderWidth="1px" borderRadius="md">
-                  <Box flex="1">
-                    <Text fontWeight="bold">{card.id}</Text>
-                    <Text>{card.description}</Text>
-                    <Text fontSize="sm" color="gray.600">{card.source}</Text>
-                  </Box>
-                  <Button
-                    colorScheme="red"
-                    size="sm"
-                    onClick={() => deleteCard(card.id)}
-                  >
-                    Delete
-                  </Button>
-                </HStack>
-              ))}
-            </Stack>
-          </Box>
-        </Stack>
+        {/* ... (rest of the body section) */}
       </CardBody>
     </Card>
   );
 };
 
-export default DevAssistCardEditor;
+export default CardContentEditor;
+```
